@@ -30,7 +30,7 @@ object Main{
       cap.read(post_frame)
       Imgproc.resize(post_frame, post_frame, new Size(256, 144))
       Imgproc.cvtColor(post_frame, post_frame, Imgproc.COLOR_RGB2GRAY)
-      if(iscut(pre_frame, post_frame)){
+      if(iscut(pre_frame, post_frame, 40, 0.6, 30)){
         cut_points = cut_points :+ cap.get(Videoio.CAP_PROP_POS_FRAMES).toInt
       }
       counter -= 1
@@ -39,27 +39,33 @@ object Main{
     }
     println(cut_points.mkString(" "))
   }
-  def iscut(pre: Mat, post: Mat):Boolean={
-    if(iscut_absdiff(pre, post)){
+  def iscut(
+    pre: Mat,
+    post: Mat,
+    SIMPLE_DIFF: Double,
+    REGION_DIFF: Double,
+    NUM_OF_DIFF_REGION: Int
+    ):Boolean={
+    if(iscut_absdiff(pre, post, SIMPLE_DIFF)){
       return true
     }
-    if(iscut_blockdiff(pre, post)){
+    if(iscut_blockdiff(pre, post, REGION_DIFF, NUM_OF_DIFF_REGION)){
       return true
     }
     return false
   }
-  def iscut_absdiff(pre: Mat, post: Mat):Boolean={
+  def iscut_absdiff(pre: Mat, post: Mat, SIMPLE_DIFF: Double):Boolean={
     var diff = new Mat()
     Core.absdiff(pre, post, diff)
     val diffval:Scalar = Core.mean(diff)
     diff.release
-    if(diffval.`val`(0) > 40){
+    if(diffval.`val`(0) > SIMPLE_DIFF){
       return true
     } else {
       return false
     }
   }
-  def iscut_blockdiff(pre: Mat, post: Mat):Boolean={
+  def iscut_blockdiff(pre: Mat, post: Mat, REGION_DIFF: Double, NUM_OF_DIFF_REGION: Int):Boolean={
     var count = 0
     for {i <- 1 to 16
          j <- 1 to 9}{
@@ -76,11 +82,11 @@ object Main{
         val diffval = Core.mean(diff).`val`(0)
         diffs = diffs :+ diffval
       }
-      if(diffs.min > 0.6){
+      if(diffs.min > REGION_DIFF){
         count += 1
       }
     }
-    if(count > 30){
+    if(count > NUM_OF_DIFF_REGION){
       return true
     }
     return false
